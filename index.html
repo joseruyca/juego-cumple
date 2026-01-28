@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="es">
 <head>
@@ -583,6 +584,33 @@
       pointer-events:none;
       z-index: 5;
     }
+  
+    .tapSound{
+      position:absolute;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:6;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      font-weight: 950;
+      font-size: 64px;
+      letter-spacing: -2px;
+      color: rgba(255,255,255,.92);
+      text-shadow: 0 18px 60px rgba(0,0,0,.65);
+    }
+    .tapSound.on{ display:flex; }
+    .tapSound::before{
+      content:"";
+      width: 120px; height: 120px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 18px 70px rgba(0,0,0,.55);
+      position:absolute;
+    }
+
   </style>
 </head>
 
@@ -632,7 +660,6 @@
         </div>
       </div>
     </div>
-    <audio id="song" preload="auto" src="song.mp3"></audio>
   </section>
 
   <!-- CANDLES -->
@@ -648,12 +675,16 @@
   <!-- FINAL -->
   <section class="screen" id="final">
     <div class="finalStage">
-      <video id="vid" src="video.mp4" playsinline muted loop></video>
+      <video id="vid" src="video.mp4" playsinline loop preload="auto"></video>
       <canvas id="confetti"></canvas>
+      <div id="tapSound" class="tapSound" aria-label="Tap para sonido">▶</div>
       <div class="boom">FELIZ CUMPLE</div>
       <div class="bounce" id="bounce"><img src="sergio.jpg" alt="sergio"/></div>
     </div>
   </section>
+
+  <!-- Keep audio outside hidden screens for iOS reliability -->
+  <audio id="song" preload="auto" src="song.mp3" playsinline></audio>
 
 <script>
 (() => {
@@ -676,6 +707,7 @@
   function beep(kind="tap"){
     try{
       ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac && ac.state === "suspended") ac.resume().catch(()=>{});
       const o = ac.createOscillator();
       const g = ac.createGain();
       o.connect(g); g.connect(ac.destination);
@@ -713,6 +745,58 @@
   const holdFill = $("holdFill");
   const monkey = $("monkey");
   const monkeyText = $("monkeyText");
+
+  // Mobile audio unlock (iOS/Safari): prime HTMLAudio + WebAudio within the first user gesture
+  let audioPrimed = false;
+  function primeAudio(){
+    if(audioPrimed) return;
+    audioPrimed = true;
+
+    // prime WebAudio (beeps)
+    try{
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac && ac.state === "suspended") ac.resume().catch(()=>{});
+    }catch(e){}
+
+    // prime <audio> (music)
+    try{
+      song.preload = "auto";
+      song.playsInline = true;
+      const prevVol = (typeof song.volume === "number") ? song.volume : 1;
+      song.volume = 0;
+      const p = song.play();
+      if(p && p.then){
+        p.then(()=>{
+          song.pause();
+          song.currentTime = 0;
+          song.volume = prevVol || 1;
+        }).catch(()=>{
+          song.volume = prevVol || 1;
+        });
+      }else{
+        song.volume = prevVol || 1;
+      }
+    }catch(e){}
+  }
+
+  // Start music immediately after tap (must be inside user gesture on mobile)
+  let musicWanted = true;
+  let musicStarted = false;
+  function startMusic(reset=false){
+    if(!musicWanted) return;
+    try{
+      song.loop = true;
+      song.volume = 1;
+      if(reset || !musicStarted){
+        try{ song.currentTime = 0; }catch(e){}
+      }
+      const p = song.play();
+      musicStarted = true;
+      if(p && p.catch){
+        p.catch(()=>{ /* will retry on next gesture */ });
+      }
+    }catch(e){}
+  }
 
   const CFG = {
     lanes: 4,
@@ -873,8 +957,12 @@
 
   // Pointer controls
   function onRhythmPointerDown(e){
+    // keep music alive (don’t restart it)
+    try{ if(song && song.paused) song.play().catch(()=>{}); }catch(err){}
     if(!running || holdMode) return;
     e.preventDefault();
+    // If mobile blocked the initial play, try again on the first gameplay tap.
+    try{ if(song && song.paused) song.play().catch(()=>{}); }catch(err){}
     const x = (e.touches ? e.touches[0].clientX : e.clientX);
     const lane = tapLaneFromX(x);
     tryHit(lane);
@@ -1069,7 +1157,7 @@
       cell.classList.add("out");
       candleOut++;
       vibrate(10); beep("hit");
-      if(candleOut >= CCFG.count) win();
+      if(candleOut >= CCFG.count) win(true);
     }, { passive:false });
 
     return cell;
@@ -1139,7 +1227,7 @@
         pick.classList.add("out");
         candleOut++;
         vibrate(10); beep("hit");
-        if(candleOut >= CCFG.count) win();
+        if(candleOut >= CCFG.count) win(false);
       }
     }
     mic.raf = requestAnimationFrame(micLoop);
@@ -1153,6 +1241,33 @@
   // FINAL: Video + bouncing photo + confetti
   // =========================
   const vid = $("vid");
+  const tapSound = $("tapSound");
+
+  function playVideoWithSound(fromGesture){
+    try{
+      tapSound.classList.remove("on");
+      vid.muted = false;
+      vid.volume = 1;
+      vid.currentTime = 0;
+      const p = vid.play();
+      if(p && p.catch){
+        p.catch(()=>{
+          // If autoplay-with-sound is blocked, require a tap
+          tapSound.classList.add("on");
+        });
+      }
+    }catch(e){
+      tapSound.classList.add("on");
+    }
+  }
+
+  tapSound.addEventListener("pointerdown", (e)=>{
+    e.preventDefault();
+    primeAudio();
+    playVideoWithSound(true);
+    vibrate(10); beep("tap");
+  }, { passive:false });
+
   const bounce = $("bounce");
   const conf = $("confetti");
   const ctx = conf.getContext("2d");
@@ -1230,15 +1345,15 @@
     requestAnimationFrame(bounceLoop);
   }
 
-  function win(){
+  function win(fromGesture){
     micOff();
     vibrate([20,40,20,40,30]); beep("good");
     show("final");
     resizeConf();
     startConfetti(3600);
 
-    // start video (muted loop)
-    vid.play().catch(()=>{});
+    // start video (with sound)
+    playVideoWithSound(!!fromGesture);
     // start bouncing
     bx = Math.random() * Math.max(20, innerWidth-180);
     by = Math.random() * Math.max(20, innerHeight-220);
@@ -1268,9 +1383,8 @@
     startT = now;
     nextSpawn = now + 400;
 
-    // start song
-    song.currentTime = 0;
-    song.play().catch(()=>{ /* user gesture already happened */ });
+    // start song (already started on the first tap)
+    startMusic(false);
 
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(loop);
@@ -1287,7 +1401,9 @@
   // Splash: user gesture unlock
   $("tapStart").addEventListener("pointerdown", (e)=>{
     e.preventDefault();
+    primeAudio();
     vibrate(10); beep("tap");
+    startMusic(true);
     goRhythm();
   }, { passive:false });
 
