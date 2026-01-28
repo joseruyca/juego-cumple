@@ -1,0 +1,1303 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <meta name="theme-color" content="#000000"/>
+  <title>🎂</title>
+  <style>
+    :root{
+      --bg:#000;
+      --ui: rgba(255,255,255,.10);
+      --ui2: rgba(255,255,255,.16);
+      --txt: rgba(255,255,255,.92);
+      --mut: rgba(255,255,255,.62);
+      --good: #22c55e;
+      --hot: #f97316;
+      --bad: #ef4444;
+      --r: 22px;
+      --safeTop: env(safe-area-inset-top, 0px);
+      --safeBot: env(safe-area-inset-bottom, 0px);
+    }
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      background: radial-gradient(1200px 700px at 25% 10%, rgba(124,58,237,.20), transparent 60%),
+                  radial-gradient(900px 600px at 75% 20%, rgba(34,197,94,.12), transparent 55%),
+                  linear-gradient(180deg, #04010a, #000);
+      color: var(--txt);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow:hidden;
+      position:fixed; inset:0;
+      touch-action: manipulation;
+    }
+
+    /* Screens */
+    .screen{
+      position:fixed;
+      inset:0;
+      display:none;
+      overflow:hidden;
+    }
+    .screen.active{ display:block; }
+
+    /* Minimal HUD */
+    .hud{
+      position:fixed;
+      top: calc(10px + var(--safeTop));
+      left: 12px;
+      right: 12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      z-index: 30;
+      pointer-events:none;
+    }
+    .chip{
+      pointer-events:auto;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.40);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+      color: rgba(255,255,255,.80);
+      font-weight: 800;
+      letter-spacing:.2px;
+      font-size: 12px;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:99px;
+      background: linear-gradient(135deg, #ff3ea5, #7c3aed);
+      box-shadow: 0 0 18px rgba(124,58,237,.45);
+    }
+
+    /* SPLASH */
+    #splash{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(900px 500px at 50% 40%, rgba(255,255,255,.08), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.25));
+    }
+    .tap{
+      width: min(520px, 92vw);
+      padding: 22px 18px;
+      border-radius: 28px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 18px 70px rgba(0,0,0,.55);
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+    }
+    .tap .big{
+      font-size: clamp(34px, 8vw, 62px);
+      font-weight: 1000;
+      letter-spacing: -1px;
+    }
+    .tap .sub{
+      margin-top: 8px;
+      color: rgba(255,255,255,.60);
+      font-weight: 800;
+      letter-spacing: .4px;
+      font-size: 12px;
+    }
+    .shine{
+      position:absolute;
+      inset:-60px -120px auto auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.22), transparent 60%);
+      filter: blur(1px);
+      animation: drift 2.2s ease-in-out infinite;
+      opacity: .9;
+    }
+    @keyframes drift{
+      0%,100%{ transform: translate(0,0); }
+      50%{ transform: translate(-18px, 16px); }
+    }
+
+    /* RHYTHM */
+    #rhythm{
+      background:
+        radial-gradient(1200px 700px at 20% 20%, rgba(124,58,237,.18), transparent 60%),
+        radial-gradient(900px 600px at 85% 35%, rgba(34,197,94,.12), transparent 55%),
+        linear-gradient(180deg, #050314, #000);
+    }
+    .game{
+      position:absolute;
+      inset: 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: calc(64px + var(--safeTop)) 10px calc(24px + var(--safeBot));
+    }
+    .board{
+      width: min(540px, 96vw);
+      height: min(760px, 78vh);
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 18px 70px rgba(0,0,0,.6);
+      overflow:hidden;
+      position:relative;
+    }
+    /* hit/miss feedback */
+    .flash{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .12s ease;
+      z-index: 3;
+    }
+    .flash.ok{ background: rgba(34,197,94,.18); opacity:1; }
+    .flash.no{ background: rgba(239,68,68,.20); opacity:1; }
+
+    .lane{ transition: box-shadow .12s ease; }
+    .lane.ok{ box-shadow: inset 0 -220px 200px rgba(34,197,94,.14); }
+    .lane.no{ box-shadow: inset 0 -220px 200px rgba(239,68,68,.14); }
+
+.shade{
+      position:absolute; inset:0;
+      background: radial-gradient(900px 520px at 50% 20%, rgba(0,0,0,.08), rgba(0,0,0,.65));
+    }
+
+    .lanes{
+      position:absolute;
+      inset: 0;
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      z-index: 3;
+    }
+    .lane{
+      position:relative;
+      border-left: 1px solid rgba(255,255,255,.07);
+      border-right: 1px solid rgba(0,0,0,.2);
+    }
+    .lane::after{
+      content:"";
+      position:absolute;
+      left: 10%;
+      right: 10%;
+      bottom: 18%;
+      height: 5px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.14);
+      box-shadow: 0 0 22px rgba(255,255,255,.14);
+    }
+
+    .note{
+      position:absolute;
+      left: 50%;
+      width: 76%;
+      transform: translateX(-50%);
+      height: 54px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255,255,255,.20), rgba(255,255,255,.08));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 12px 24px rgba(0,0,0,.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight: 1000;
+      letter-spacing: .4px;
+      color: rgba(255,255,255,.92);
+      backdrop-filter: blur(6px);
+    }
+    .note small{ opacity:.75; font-weight:900; }
+
+    .note.hit{
+      animation: hit .18s ease forwards;
+    }
+    @keyframes hit{
+      to{ transform: translateX(-50%) scale(.85); opacity:0; }
+    }
+
+    /* HOLD note big centered */
+    .holdWrap{
+      position:absolute;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 10;
+      background: radial-gradient(700px 500px at 50% 50%, rgba(0,0,0,.2), rgba(0,0,0,.65));
+    }
+    .holdWrap.on{ display:flex; }
+    .holdBtn{
+      width: min(320px, 70vw);
+      aspect-ratio: 1/1;
+      border-radius: 999px;
+      background:
+        radial-gradient(140px 140px at 35% 35%, rgba(255,255,255,.20), transparent 55%),
+        linear-gradient(135deg, rgba(255,62,165,.22), rgba(124,58,237,.20));
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 0 50px rgba(124,58,237,.25), 0 24px 80px rgba(0,0,0,.65);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: rgba(255,255,255,.95);
+      font-weight: 1000;
+      letter-spacing:.6px;
+      text-align:center;
+      padding: 18px;
+      transform: translateZ(0);
+      animation: breathe 1.3s ease-in-out infinite;
+      touch-action:none;
+    }
+    @keyframes breathe{
+      0%,100%{ transform: scale(1); }
+      50%{ transform: scale(1.04); }
+    }
+    .holdRing{
+      position:absolute;
+      width: min(360px, 78vw);
+      aspect-ratio: 1/1;
+      border-radius: 999px;
+      border: 2px dashed rgba(255,255,255,.20);
+      filter: drop-shadow(0 0 18px rgba(255,255,255,.08));
+      animation: spin 2.6s linear infinite;
+      pointer-events:none;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+
+    .holdProg{
+      position:absolute;
+      bottom: calc(22px + var(--safeBot));
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(360px, 78vw);
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.12);
+      overflow:hidden;
+    }
+    .holdFill{
+      width:0%;
+      height:100%;
+      background: linear-gradient(90deg, rgba(34,197,94,.25), rgba(34,197,94,.88));
+      transition: width .06s linear;
+    }
+
+    /* Monkey overlay anchored to finger */
+    
+    .monkeyText{
+      position:absolute;
+      left: 10px;
+      right: 10px;
+      top: 10px;
+      text-align:center;
+      font-weight: 1000;
+      letter-spacing: .2px;
+      font-size: clamp(22px, 6.5vw, 44px);
+      color: rgba(255,255,255,.96);
+      text-shadow: 0 10px 28px rgba(0,0,0,.85);
+      opacity:0;
+      transform: translateY(-8px) scale(.98);
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 13;
+      pointer-events:none;
+    }
+    .monkeyText.on{ opacity:1; transform: translateY(0) scale(1); }
+.monkey{
+      position:absolute;
+      width: min(520px, 92vw);
+      aspect-ratio: 1/1;
+      transform: translate(-50%,-50%) scale(0);
+      opacity:0;
+      pointer-events:none;
+      z-index: 12;
+      transition: transform .10s ease, opacity .10s ease;
+      filter: drop-shadow(0 26px 80px rgba(0,0,0,.75));
+    }
+    .monkey.show{ opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    .monkey img{
+      width:100%; height:100%;
+      object-fit: cover;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.18);
+    }
+
+    /* "Exact finger anchor" target (the butt point) */
+    .target{
+      position:absolute;
+      width: 62px;
+      height: 62px;
+      border-radius: 999px;
+      left: calc(var(--ax) * 100%);
+      top:  calc(var(--ay) * 100%);
+      transform: translate(-50%,-50%);
+      pointer-events:none;
+      z-index: 13;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.12), rgba(255,255,255,0) 60%);
+      border: 2px solid rgba(255,255,255,.25);
+      box-shadow: 0 0 22px rgba(255,255,255,.12);
+    }
+    .target::after{
+      content:"";
+      position:absolute; inset: 50% auto auto 50%;
+      width: 8px; height: 8px; border-radius: 99px;
+      background: rgba(255,255,255,.55);
+      transform: translate(-50%,-50%);
+      box-shadow: 0 0 18px rgba(255,255,255,.20);
+    }
+
+    /* Tiny text just for required prompt */
+    .banner{
+      position:fixed;
+      left: 50%;
+      top: calc(14px + var(--safeTop));
+      transform: translateX(-50%);
+      z-index: 35;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(10px);
+      font-weight: 1000;
+      letter-spacing:.3px;
+      font-size: 12px;
+      display:none;
+    }
+    .banner.on{ display:block; }
+
+    /* CANDLES */
+    #candles{
+      background:#000;
+    }
+    .candlesWrap{
+      position:absolute;
+      inset: 0;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding: calc(64px + var(--safeTop)) 14px calc(20px + var(--safeBot));
+      gap: 14px;
+    }
+    .titleMini{
+      display:flex; align-items:center; justify-content:center;
+      width: min(520px, 92vw);
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(255,255,255,.88);
+      font-weight: 1000;
+      letter-spacing:.5px;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .cGrid{
+      width: min(560px, 94vw);
+      height: min(560px, 72vh);
+      border-radius: 28px;
+      background: radial-gradient(900px 560px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 18px 80px rgba(0,0,0,.72);
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      align-content:center;
+      gap: 18px 18px;
+      padding: 22px 18px;
+      touch-action:none;
+    }
+    .candleCell{
+      width: 78px;
+      height: 132px;
+      border-radius: 999px;
+      background: transparent;
+      border: none;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      position:relative;
+      overflow:visible;
+      transform: translateZ(0);
+    }
+    .candleCell::after{
+      content:"";
+      position:absolute;
+      inset:-10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.03);
+      opacity:0;
+      transition: opacity .12s ease;
+    }
+    .candleCell:active{ transform: scale(.97); }
+    .candleCell:active::after{ opacity:1; }
+.stick{
+      width: 26px;
+      height: 78px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.18);
+      position:relative;
+      box-shadow: inset 0 10px 30px rgba(0,0,0,.25);
+    }
+    .stick::before{
+      content:"";
+      position:absolute;
+      left: -8px;
+      right: -8px;
+      bottom: -10px;
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.12);
+      filter: blur(.2px);
+    }
+    .wick{
+      position:absolute;
+      left:50%;
+      top:-12px;
+      transform: translateX(-50%);
+      width: 3px; height: 12px;
+      background: rgba(255,255,255,.40);
+      border-radius: 2px;
+    }
+    .flame{
+
+      position:absolute;
+      left:50%;
+      top:-44px;
+      transform: translateX(-50%);
+      width: 30px; height: 44px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.95), rgba(255,215,0,.55) 35%, rgba(249,115,22,.75) 65%, rgba(239,68,68,.35) 100%);
+      filter: drop-shadow(0 0 22px rgba(249,115,22,.35));
+      animation: flick .10s infinite alternate;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    @keyframes flick{
+      from{ transform: translateX(-50%) translateY(0) scale(1) rotate(-2deg); }
+      to{ transform: translateX(-50%) translateY(1px) scale(1.03) rotate(2deg); }
+    }
+    .candleCell.out .flame{
+      opacity:0;
+      transform: translateX(-50%) translateY(10px) scale(.75);
+      animation:none;
+      filter:none;
+    }
+
+    .micBar{
+      width: min(560px, 94vw);
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.12);
+      overflow:hidden;
+    }
+    .micFill{
+      width:0%;
+      height:100%;
+      background: linear-gradient(90deg, rgba(34,197,94,.30), rgba(34,197,94,.90));
+      transition: width .06s linear;
+    }
+    .micBtn{
+      width: min(560px, 94vw);
+      padding: 12px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.92);
+      font-weight: 1000;
+      letter-spacing:.4px;
+      text-transform: uppercase;
+    }
+
+    /* FINAL */
+    #final{
+      background:#000;
+    }
+    .finalStage{
+      position:absolute;
+      inset:0;
+      overflow:hidden;
+      background:#000;
+    }
+    video{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      filter: contrast(1.05) saturate(1.08);
+      opacity: .95;
+    }
+
+    .bounce{
+      position:absolute;
+      width: 140px;
+      height: 180px;
+      border-radius: 22px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 18px 60px rgba(0,0,0,.65);
+      background: rgba(255,255,255,.06);
+      transform: translateZ(0);
+      will-change: left, top;
+    }
+    .bounce img{
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      display:block;
+    }
+
+    .boom{
+      position:absolute;
+      left: 50%;
+      top: calc(16px + var(--safeTop));
+      transform: translateX(-50%);
+      z-index: 6;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(10px);
+      font-weight: 1000;
+      letter-spacing:.6px;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    /* Confetti canvas */
+    canvas#confetti{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+      z-index: 5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="chip"><span class="dot"></span><span id="mode">TAP</span></div>
+    <div class="chip"><span id="mini"> </span></div>
+  </div>
+
+  <div class="banner" id="banner"></div>
+
+  <!-- SPLASH -->
+  <section class="screen active" id="splash">
+    <div class="tap" id="tapStart">
+      <div class="shine"></div>
+      <div class="big">TAP</div>
+      <div class="sub">🔊</div>
+    </div>
+  </section>
+
+  <!-- RHYTHM -->
+  <section class="screen" id="rhythm">
+    <div class="game">
+      <div class="board" id="board">
+        <div class="shade"></div>
+        <div class="flash" id="flash"></div>
+        <div class="lanes" id="lanes">
+          <div class="lane" data-lane="0"></div>
+          <div class="lane" data-lane="1"></div>
+          <div class="lane" data-lane="2"></div>
+          <div class="lane" data-lane="3"></div>
+        </div>
+
+        <div class="holdWrap" id="holdWrap">
+          <div class="holdRing"></div>
+          <div class="holdBtn" id="holdBtn">DEJA<br/>PRESIONADO</div>
+          <div class="holdProg"><div class="holdFill" id="holdFill"></div></div>
+
+          <div class="monkeyText" id="monkeyText"></div>
+
+          <div class="monkey" id="monkey" style="--ax:0.52;--ay:0.62;">
+            <img src="mono.jpg" alt="mono"/>
+            <div class="target"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <audio id="song" preload="auto" src="song.mp3"></audio>
+  </section>
+
+  <!-- CANDLES -->
+  <section class="screen" id="candles">
+    <div class="candlesWrap">
+      <div class="titleMini">APAGA LAS VELAS</div>
+      <div class="cGrid" id="cGrid"></div>
+      <div class="micBar"><div class="micFill" id="micFill"></div></div>
+      <button class="micBtn" id="micBtn">MIC</button>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="screen" id="final">
+    <div class="finalStage">
+      <video id="vid" src="video.mp4" playsinline muted loop></video>
+      <canvas id="confetti"></canvas>
+      <div class="boom">FELIZ CUMPLE</div>
+      <div class="bounce" id="bounce"><img src="sergio.jpg" alt="sergio"/></div>
+    </div>
+  </section>
+
+<script>
+(() => {
+  const $ = (id)=>document.getElementById(id);
+
+  const screens = {
+    splash: $("splash"),
+    rhythm: $("rhythm"),
+    candles: $("candles"),
+    final: $("final"),
+  };
+
+  const modeEl = $("mode");
+  const miniEl = $("mini");
+  const banner = $("banner");
+
+  // Small haptics
+  const vibrate = (p)=>{ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} };
+  let ac;
+  function beep(kind="tap"){
+    try{
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      const t = ac.currentTime;
+      const map = {
+        tap: { f0: 700, f1: 420, d: .06, a: .07 },
+        hit: { f0: 860, f1: 520, d: .07, a: .09 },
+        good:{ f0: 520, f1: 1100, d: .16, a: .10 },
+        bad: { f0: 240, f1: 140, d: .16, a: .09 }
+      };
+      const s = map[kind] || map.tap;
+      o.type="sine";
+      o.frequency.setValueAtTime(s.f0, t);
+      o.frequency.exponentialRampToValueAtTime(s.f1, t+s.d);
+      g.gain.setValueAtTime(s.a, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+s.d+0.03);
+      o.start(t);
+      o.stop(t+s.d+0.04);
+    }catch(e){}
+  }
+
+  function show(name){
+    Object.values(screens).forEach(s => s.classList.remove("active"));
+    screens[name].classList.add("active");
+  }
+
+  // =========================
+  // RHYTHM GAME (longer)
+  // =========================
+  const lanesEl = $("lanes");
+  const board = $("board");
+  const song = $("song");
+  const holdWrap = $("holdWrap");
+  const holdBtn = $("holdBtn");
+  const holdFill = $("holdFill");
+  const monkey = $("monkey");
+  const monkeyText = $("monkeyText");
+
+  const CFG = {
+    lanes: 4,
+    bpm: 132,
+    travelMs: 1100,      // note fall time
+    hitWindowMs: 160,
+    lineY: 0.82,         // hit line position (as fraction of board height)
+    // make it longer:
+    totalNotes: 90,       // <-- more notes
+    spawnJitter: 0.18,   // variation
+    holdDurationMs: 1650,
+    holdAfterMs: 350,    // small pause before hold prompt
+  };
+
+  let notes = [];
+  let running = false;
+  let raf = 0;
+  let startT = 0;
+  let nextSpawn = 0;
+  let spawned = 0;
+  let holdMode = false;
+
+  function boardRect(){ return board.getBoundingClientRect(); }
+
+  function spawnNote(lane){
+    const laneEl = lanesEl.children[lane];
+    const n = document.createElement("div");
+    n.className = "note";
+    n.innerHTML = "●";
+    n.style.top = "-70px";
+    laneEl.appendChild(n);
+
+    const born = performance.now();
+    notes.push({ el:n, lane, born, hit:false });
+  }
+
+  function updateNotes(now){
+    const rect = boardRect();
+    const h = rect.height;
+    const linePx = h * CFG.lineY;
+
+    // spawn schedule: based on BPM, but with slight randomness
+    const beatMs = 60000 / CFG.bpm;
+    while(!holdMode && spawned < CFG.totalNotes && now >= nextSpawn){
+      const lane = (Math.random()*CFG.lanes)|0;
+      spawnNote(lane);
+      spawned++;
+
+      const jitter = (Math.random()*2-1) * beatMs * CFG.spawnJitter;
+      nextSpawn += beatMs + jitter;
+    }
+
+    // move notes
+    for(const note of notes){
+      const t = (now - note.born) / CFG.travelMs; // 0..1
+      const y = (-70) + t * (linePx + 70);
+      note.el.style.top = y + "px";
+
+      // auto miss cleanup (miss = red)
+      if(t > 1.12 && note.el.isConnected && !note.hit){
+        note.hit = true;
+        try{ note.el.classList.add("hit"); }catch(e){}
+        setTimeout(()=>{ try{ note.el.remove(); }catch(e){} }, 80);
+        pulse("no", note.lane);
+        vibrate(6); beep("tap");
+      }
+      if(t > 1.40 && note.el.isConnected){
+        try{ note.el.remove(); }catch(e){}
+      }
+    }
+
+    // prune resolved
+    notes = notes.filter(n => !(n.hit && !n.el.isConnected));
+
+    // End condition -> trigger HOLD as part of the game
+    if(!holdMode && spawned >= CFG.totalNotes && notes.length === 0){
+      // small pause then hold
+      holdMode = true;
+      setTimeout(()=> startHoldSequence(), CFG.holdAfterMs);
+    }
+  }
+
+  function tapLaneFromX(x){
+    const rect = boardRect();
+    const localX = x - rect.left;
+    const laneW = rect.width / CFG.lanes;
+    return Math.max(0, Math.min(CFG.lanes-1, Math.floor(localX / laneW)));
+  }
+
+
+  let lastPulse = 0;
+  function pulse(result, lane){
+    const now = performance.now();
+    lastPulse = now;
+
+    // board overlay
+    if(flash){
+      flash.classList.remove("ok","no");
+      // force reflow to restart transition
+      void flash.offsetWidth;
+      flash.classList.add(result === "ok" ? "ok" : "no");
+      setTimeout(()=>{ 
+        if(performance.now() - lastPulse > 90){
+          flash.classList.remove("ok","no"); 
+        }
+      }, 120);
+    }
+
+    // lane glow
+    const laneEl = lanes?.querySelector(`.lane[data-lane="${lane}"]`);
+    if(laneEl){
+      laneEl.classList.remove("ok","no");
+      void laneEl.offsetWidth;
+      laneEl.classList.add(result === "ok" ? "ok" : "no");
+      setTimeout(()=> laneEl.classList.remove("ok","no"), 140);
+    }
+  }
+  function tryHit(lane){
+    const now = performance.now();
+    const rect = boardRect();
+    const h = rect.height;
+    const linePx = h * CFG.lineY;
+
+    // find closest note in lane near line
+    let best = null;
+    let bestDist = Infinity;
+
+    for(const n of notes){
+      if(n.lane !== lane) continue;
+      const top = parseFloat(n.el.style.top) || -9999;
+      const centerY = top + 27;
+      const dist = Math.abs(centerY - linePx);
+      if(dist < bestDist){
+        bestDist = dist;
+        best = n;
+      }
+    }
+
+    if(best && bestDist <= (CFG.hitWindowMs)){
+      best.hit = true;
+      best.el.classList.add("hit");
+      setTimeout(()=>{ try{ best.el.remove(); }catch(e){} }, 140);
+      pulse("ok", lane);
+      vibrate(8); beep("hit");
+      return true;
+    }else{
+      pulse("no", lane);
+      vibrate(4); beep("tap");
+      return false;
+    }
+  }
+
+  function loop(now){
+    if(!running) return;
+    updateNotes(now);
+    raf = requestAnimationFrame(loop);
+  }
+
+  // Pointer controls
+  function onRhythmPointerDown(e){
+    if(!running || holdMode) return;
+    e.preventDefault();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX);
+    const lane = tapLaneFromX(x);
+    tryHit(lane);
+  }
+
+  // =========================
+  // HOLD + MONKEY (integrated)
+  // =========================
+  let holding = false;
+  let holdStart = 0;
+  let holdRAF = 0;
+  let lastPt = { x:0, y:0 };
+
+  function startHoldSequence(){
+    // show hold UI (button already says DEJA PRESIONADO)
+    banner.classList.remove("on");
+
+    holdWrap.classList.add("on");
+    holdFill.style.width = "0%";
+    monkey.classList.remove("show");
+    if(monkeyText) monkeyText.classList.remove("on");
+    modeEl.textContent = "HOLD";
+    miniEl.textContent = "";
+
+    // ensure it feels like part of the game:
+    vibrate([12,30,12]); beep("good");
+  }
+
+  function holdXYFromEvent(e){
+    const rect = boardRect();
+    const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+    const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
+    // clamp inside board (for stable anchor)
+    const x = Math.max(rect.left, Math.min(rect.right, clientX));
+    const y = Math.max(rect.top, Math.min(rect.bottom, clientY));
+    return { x, y, rect };
+  }
+
+  function placeMonkeyAtFinger(clientX, clientY){
+    // Monkey overlay is positioned so that its internal anchor point (ax,ay) lands on the finger.
+    const rect = boardRect();
+    const size = Math.min(rect.width * 0.92, 520);
+    const ax = 0.52, ay = 0.62; // match CSS vars defaults
+    // top-left position so that (left + ax*size, top + ay*size) == finger
+    const left = clientX - ax * size;
+    const top  = clientY - ay * size;
+
+    monkey.style.left = left + "px";
+    monkey.style.top = top + "px";
+    // Since monkey is absolutely positioned within holdWrap (which fills board),
+    // convert to holdWrap local coords:
+    const wrapRect = holdWrap.getBoundingClientRect();
+    monkey.style.left = (left - wrapRect.left + size*0.52) + "px"; // set center-ish and use transform
+    monkey.style.top  = (top  - wrapRect.top  + size*0.62) + "px";
+  }
+
+  function showMonkeyAtFinger(clientX, clientY){
+    // We set monkey element center at finger; target inside monkey marks anchor.
+    const wrapRect = holdWrap.getBoundingClientRect();
+    const x = clientX - wrapRect.left;
+    const y = clientY - wrapRect.top;
+    monkey.style.left = x + "px";
+    monkey.style.top  = y + "px";
+    monkey.classList.add("show");
+  }
+
+  function holdTick(){
+    if(!holding) return;
+    const now = performance.now();
+    const t = Math.min(1, (now - holdStart) / CFG.holdDurationMs);
+    holdFill.style.width = (t*100).toFixed(0) + "%";
+
+    if(t >= 1){
+      finishHold();
+      return;
+    }
+    holdRAF = requestAnimationFrame(holdTick);
+  }
+
+  function startHold(e){
+    if(!holdMode) return;
+    e.preventDefault();
+    holding = true;
+    holdStart = performance.now();
+    holdFill.style.width = "0%";
+
+    // show monkey anchored EXACTLY under finger
+    const pt = holdXYFromEvent(e);
+    lastPt = { x: pt.x, y: pt.y };
+    showMonkeyAtFinger(pt.x, pt.y);
+
+    // required phrase (big above photo)
+    if(monkeyText){
+      monkeyText.textContent = "mmm culo de mmm bunda de macaco";
+      monkeyText.classList.add("on");
+    }
+
+    vibrate(10); beep("hit");
+    cancelAnimationFrame(holdRAF);
+    holdRAF = requestAnimationFrame(holdTick);
+  }
+
+  function moveHold(e){
+    if(!holding) return;
+    e.preventDefault();
+    const pt = holdXYFromEvent(e);
+    lastPt = { x: pt.x, y: pt.y };
+    showMonkeyAtFinger(pt.x, pt.y);
+  }
+
+  function cancelHold(){
+    if(!holding) return;
+    holding = false;
+    cancelAnimationFrame(holdRAF);
+    holdFill.style.width = "0%";
+    monkey.classList.remove("show");
+    if(monkeyText) monkeyText.classList.remove("on");
+    if(monkeyText) monkeyText.classList.remove("on");
+    vibrate([12,60,12]); beep("bad");
+  }
+
+  function finishHold(){
+    holding = false;
+    cancelAnimationFrame(holdRAF);
+    holdFill.style.width = "100%";
+    vibrate([20,40,20]); beep("good");
+
+    // hide hold overlay quickly then go candles
+    setTimeout(()=>{
+      banner.classList.remove("on");
+      holdWrap.classList.remove("on");
+      monkey.classList.remove("show");
+      if(monkeyText) monkeyText.classList.remove("on");
+      goCandles();
+    }, 300);
+  }
+
+  holdBtn.addEventListener("pointerdown", startHold, { passive:false });
+  holdBtn.addEventListener("pointermove", moveHold, { passive:false });
+  holdBtn.addEventListener("pointerup", (e)=>{ e.preventDefault(); cancelHold(); }, { passive:false });
+  holdBtn.addEventListener("pointercancel", (e)=>{ e.preventDefault(); cancelHold(); }, { passive:false });
+  holdBtn.addEventListener("pointerleave", (e)=>{ /* keep holding if captured */ }, { passive:true });
+
+  // Also allow holding anywhere in the overlay
+  holdWrap.addEventListener("pointerdown", (e)=>{
+    // start only if press is near center area
+    if(!holdMode) return;
+    // if already holding, ignore
+    if(holding) return;
+    startHold(e);
+  }, { passive:false });
+  holdWrap.addEventListener("pointermove", moveHold, { passive:false });
+  holdWrap.addEventListener("pointerup", (e)=>{ e.preventDefault(); cancelHold(); }, { passive:false });
+  holdWrap.addEventListener("pointercancel", (e)=>{ e.preventDefault(); cancelHold(); }, { passive:false });
+
+  // =========================
+  // CANDLES (better + title)
+  // =========================
+  const cGrid = $("cGrid");
+  const micBtn = $("micBtn");
+  const micFill = $("micFill");
+
+  const CCFG = {
+    count: 12,
+    blowThreshold: 0.17,
+    blowCooldown: 420
+  };
+
+  let candleOut = 0;
+
+  function makeCandleCell(i){
+    const cell = document.createElement("div");
+    cell.className = "candleCell";
+    cell.dataset.i = String(i);
+
+    const stick = document.createElement("div");
+    stick.className = "stick";
+
+    const wick = document.createElement("div");
+    wick.className = "wick";
+
+    const flame = document.createElement("div");
+    flame.className = "flame";
+
+    stick.appendChild(wick);
+    stick.appendChild(flame);
+    cell.appendChild(stick);
+
+    cell.addEventListener("pointerdown", (e)=>{
+      e.preventDefault();
+      if(cell.classList.contains("out")) return;
+      cell.classList.add("out");
+      candleOut++;
+      vibrate(10); beep("hit");
+      if(candleOut >= CCFG.count) win();
+    }, { passive:false });
+
+    return cell;
+  }
+
+  function setupCandles(){
+    cGrid.innerHTML = "";
+    candleOut = 0;
+    for(let i=0;i<CCFG.count;i++){
+      cGrid.appendChild(makeCandleCell(i));
+    }
+    modeEl.textContent = "APAGA";
+    miniEl.textContent = "";
+  }
+
+  // Micro optional
+  let mic = { on:false, stream:null, analyser:null, data:null, last:0, raf:0 };
+
+  async function micOn(){
+    if(mic.on) return;
+    modeEl.textContent = "MIC";
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      mic.stream = stream;
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const src = ac.createMediaStreamSource(stream);
+      const analyser = ac.createAnalyser();
+      analyser.fftSize = 1024;
+      src.connect(analyser);
+      mic.analyser = analyser;
+      mic.data = new Float32Array(analyser.fftSize);
+      mic.on = true;
+      vibrate([12,30,12]); beep("good");
+      cancelAnimationFrame(mic.raf);
+      mic.raf = requestAnimationFrame(micLoop);
+    }catch(e){
+      vibrate([20,80,20]); beep("bad");
+      modeEl.textContent = "TAP";
+    }
+  }
+  function micOff(){
+    mic.on = false;
+    micFill.style.width = "0%";
+    try{
+      cancelAnimationFrame(mic.raf);
+      if(mic.stream) mic.stream.getTracks().forEach(t=>t.stop());
+    }catch(e){}
+    mic.stream = null; mic.analyser = null; mic.data = null; mic.raf = 0;
+    modeEl.textContent = "APAGA";
+  }
+  function micLoop(){
+    if(!mic.on || !mic.analyser) return;
+    mic.analyser.getFloatTimeDomainData(mic.data);
+    let sum=0;
+    for(let i=0;i<mic.data.length;i++){ const v=mic.data[i]; sum += v*v; }
+    const rms = Math.sqrt(sum / mic.data.length);
+    const pct = Math.min(100, Math.max(0, (rms/0.30)*100));
+    micFill.style.width = pct.toFixed(0) + "%";
+
+    const now = performance.now();
+    if(rms > CCFG.blowThreshold && (now - mic.last) > CCFG.blowCooldown){
+      mic.last = now;
+      // extinguish one random lit candle
+      const alive = Array.from(cGrid.querySelectorAll(".candleCell:not(.out)"));
+      if(alive.length){
+        const pick = alive[(Math.random()*alive.length)|0];
+        pick.classList.add("out");
+        candleOut++;
+        vibrate(10); beep("hit");
+        if(candleOut >= CCFG.count) win();
+      }
+    }
+    mic.raf = requestAnimationFrame(micLoop);
+  }
+
+  micBtn.addEventListener("click", ()=>{
+    if(mic.on) micOff(); else micOn();
+  });
+
+  // =========================
+  // FINAL: Video + bouncing photo + confetti
+  // =========================
+  const vid = $("vid");
+  const bounce = $("bounce");
+  const conf = $("confetti");
+  const ctx = conf.getContext("2d");
+
+  function resizeConf(){
+    const dpr = devicePixelRatio || 1;
+    conf.width = innerWidth * dpr;
+    conf.height = innerHeight * dpr;
+    conf.style.width = innerWidth + "px";
+    conf.style.height = innerHeight + "px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  addEventListener("resize", resizeConf, { passive:true });
+
+  let parts = [];
+  let confOn = false;
+
+  function startConfetti(ms=3000){
+    confOn = true;
+    parts = [];
+    const colors = ["#ff3ea5","#7c3aed","#22c55e","#31c7ff","#f97316","#ffffff"];
+    const n = 180;
+    for(let i=0;i<n;i++){
+      parts.push({
+        x: Math.random()*innerWidth,
+        y: -30 - Math.random()*innerHeight*0.3,
+        w: 6 + Math.random()*6,
+        h: 8 + Math.random()*10,
+        vx: -1.2 + Math.random()*2.4,
+        vy: 3.0 + Math.random()*5.0,
+        r: Math.random()*Math.PI,
+        vr: -0.12 + Math.random()*0.24,
+        c: colors[(Math.random()*colors.length)|0],
+        o: 0.75 + Math.random()*0.25
+      });
+    }
+    const t0 = performance.now();
+    function tick(t){
+      if(!confOn) return;
+      ctx.clearRect(0,0,innerWidth,innerHeight);
+      for(const p of parts){
+        p.x += p.vx;
+        p.y += p.vy;
+        p.r += p.vr;
+        p.vy += 0.02;
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate(p.r);
+        ctx.globalAlpha = p.o;
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        ctx.restore();
+      }
+      if(t - t0 < ms) requestAnimationFrame(tick);
+      else { confOn = false; ctx.clearRect(0,0,innerWidth,innerHeight); }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Bouncing photo
+  let bx=40, by=140, vx=2.2, vy=2.6;
+  function bounceLoop(){
+    const w = bounce.offsetWidth;
+    const h = bounce.offsetHeight;
+    const maxX = innerWidth - w;
+    const maxY = innerHeight - h;
+
+    bx += vx; by += vy;
+    if(bx <= 0){ bx=0; vx *= -1; }
+    if(by <= 0){ by=0; vy *= -1; }
+    if(bx >= maxX){ bx=maxX; vx *= -1; }
+    if(by >= maxY){ by=maxY; vy *= -1; }
+    bounce.style.left = bx + "px";
+    bounce.style.top  = by + "px";
+    requestAnimationFrame(bounceLoop);
+  }
+
+  function win(){
+    micOff();
+    vibrate([20,40,20,40,30]); beep("good");
+    show("final");
+    resizeConf();
+    startConfetti(3600);
+
+    // start video (muted loop)
+    vid.play().catch(()=>{});
+    // start bouncing
+    bx = Math.random() * Math.max(20, innerWidth-180);
+    by = Math.random() * Math.max(20, innerHeight-220);
+    requestAnimationFrame(bounceLoop);
+  }
+
+  // =========================
+  // FLOW
+  // =========================
+  function goRhythm(){
+    show("rhythm");
+    modeEl.textContent = "TAP";
+    miniEl.textContent = "";
+    banner.classList.remove("on");
+
+    // reset rhythm state
+    notes = [];
+    running = true;
+    holdMode = false;
+    holding = false;
+    spawned = 0;
+
+    // clear lanes
+    Array.from(lanesEl.children).forEach(l => l.innerHTML = "");
+
+    const now = performance.now();
+    startT = now;
+    nextSpawn = now + 400;
+
+    // start song
+    song.currentTime = 0;
+    song.play().catch(()=>{ /* user gesture already happened */ });
+
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(loop);
+  }
+
+  function goCandles(){
+    running = false;
+    cancelAnimationFrame(raf);
+    try{ song.pause(); }catch(e){}
+    show("candles");
+    setupCandles();
+  }
+
+  // Splash: user gesture unlock
+  $("tapStart").addEventListener("pointerdown", (e)=>{
+    e.preventDefault();
+    vibrate(10); beep("tap");
+    goRhythm();
+  }, { passive:false });
+
+  // Rhythm taps
+  lanesEl.addEventListener("pointerdown", onRhythmPointerDown, { passive:false });
+  lanesEl.addEventListener("touchstart", onRhythmPointerDown, { passive:false });
+
+  // Prevent iOS pinch zoom
+  document.addEventListener("gesturestart", (e)=>e.preventDefault());
+})();
+</script>
+</body>
+</html>
